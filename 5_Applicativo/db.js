@@ -12,7 +12,7 @@ async function initialize() {
     driver: sqlite3.Database
   });
 
-  // Crea le tabelle se non esistono
+  // ✅ Crea le tabelle solo se non esistono
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,61 +22,40 @@ async function initialize() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    DROP TABLE IF EXISTS peers;
-    
-    CREATE TABLE peers (
+    CREATE TABLE IF NOT EXISTS peers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ip TEXT NOT NULL,
       port INTEGER NOT NULL,
       type TEXT NOT NULL,
       public_key TEXT,
       username TEXT,
+      last_seen INTEGER, -- 👈 AGGIUNGI QUESTA COLONNA
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sender_username TEXT,
+      receiver_username TEXT,
+      message TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      peer_address TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  // Gestisci la tabella messages separatamente per preservare i dati
+  // 🔄 AGGIUNGI QUESTA PARTE PER AGGIORNARE LA TABELLA ESISTENTE
   try {
-    // Prova a creare la tabella messages con il nuovo schema
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS messages_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sender_username TEXT,
-        receiver_username TEXT,
-        message TEXT NOT NULL,
-        direction TEXT NOT NULL,
-        peer_address TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Controlla se esiste la vecchia tabella
-    const oldTable = await db.get(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='messages'"
-    );
-    
-    if (oldTable) {
-      // Copia i dati dalla vecchia tabella alla nuova
-      await db.exec(`
-        INSERT INTO messages_new (message, direction, peer_address, timestamp)
-        SELECT message, direction, peer_address, timestamp FROM messages
-      `);
-      
-      // Elimina la vecchia tabella
-      await db.exec('DROP TABLE messages');
-    }
-    
-    // Rinomina la nuova tabella
-    await db.exec('ALTER TABLE messages_new RENAME TO messages');
-    
+    await db.run('ALTER TABLE peers ADD COLUMN last_seen INTEGER');
+    console.log('✅ Colonna last_seen aggiunta alla tabella peers');
   } catch (error) {
-    console.log('Tabella messages già aggiornata o errore durante l\'aggiornamento:', error);
+    // La colonna esiste già, ignora l'errore
+    if (!error.message.includes('duplicate column name')) {
+      console.log('ℹ️  Colonna last_seen già presente');
+    }
   }
-
-  console.log('✅ Database inizializzato');
 }
-
-
+// 🧩 Funzioni di gestione utenti
 async function createUser(username, publicKey, privateKey) {
   const result = await db.run(
     'INSERT INTO users (username, public_key, private_key) VALUES (?, ?, ?)',
@@ -92,11 +71,10 @@ async function createUser(username, publicKey, privateKey) {
 }
 
 async function getUser() {
-  return await db.get(
-    'SELECT * FROM users LIMIT 1'
-  );
+  return await db.get('SELECT * FROM users LIMIT 1');
 }
 
+// 🧩 Funzioni di gestione peer
 async function getPeerByAddress(ip, port) {
   return await db.get(
     'SELECT * FROM peers WHERE ip = ? AND port = ?',
@@ -105,35 +83,33 @@ async function getPeerByAddress(ip, port) {
 }
 
 async function savePeerWithKey(ip, port, type, publicKey, username) {
-  // Controlla se il peer esiste già
   const existingPeer = await getPeerByAddress(ip, port);
   
   if (existingPeer) {
-    // Aggiorna il peer esistente
     await db.run(
-      'UPDATE peers SET type = ?, public_key = ?, username = ? WHERE ip = ? AND port = ?',
-      [type, publicKey, username, ip, port]
+      'UPDATE peers SET type = ?, public_key = ?, username = ?, last_seen = ? WHERE ip = ? AND port = ?',
+      [type, publicKey, username, Date.now(), ip, port]
     );
   } else {
-    // Crea un nuovo peer
     await db.run(
-      'INSERT INTO peers (ip, port, type, public_key, username) VALUES (?, ?, ?, ?, ?)',
-      [ip, port, type, publicKey, username]
+      'INSERT INTO peers (ip, port, type, public_key, username, last_seen) VALUES (?, ?, ?, ?, ?, ?)',
+      [ip, port, type, publicKey, username, Date.now()]
     );
   }
 }
-
 async function getPeerPublicKey(ip, port) {
   const peer = await getPeerByAddress(ip, port);
   return peer ? peer.public_key : null;
 }
 
 async function getAllPeers() {
-  return await db.all(
-    'SELECT * FROM peers ORDER BY created_at DESC'
-  );
+  return await db.all('SELECT * FROM peers ORDER BY last_seen DESC');
 }
-
+// Aggiungi questa funzione al db.js
+async function getAllPeers() {
+  return await db.all('SELECT * FROM peers ORDER BY last_seen DESC');
+}
+// 🧩 Funzioni di gestione messaggi
 async function saveMessage(senderUsername, receiverUsername, message, direction, peerAddress) {
   await db.run(
     'INSERT INTO messages (sender_username, receiver_username, message, direction, peer_address) VALUES (?, ?, ?, ?, ?)',
@@ -146,16 +122,19 @@ async function getMessagesByUser(username) {
     SELECT * FROM messages 
     WHERE sender_username = ? OR receiver_username = ? 
     ORDER BY timestamp DESC
-    LIMIT 50
+    LIMIT 100
   `, [username, username]);
 }
 
+// 🧩 Chiusura del database
 async function close() {
   if (db) {
     await db.close();
+    console.log('🔒 Connessione al database chiusa');
   }
 }
 
+// 📦 Esporta tutte le funzioni
 module.exports = {
   initialize,
   createUser,
