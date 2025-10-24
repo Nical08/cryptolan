@@ -1,20 +1,25 @@
-// network_discovery.js
+// network_discovery.js - AGGIORNATO per connessione automatica
 const db = require('./db.js');
 const dgram = require('dgram');
+const { normalizeIP } = require('./utils.js');
+const chat = require('./peer.js'); // Importa il modulo chat
 
 class NetworkDiscovery {
     constructor() {
         this.multicastGroup = '224.0.0.114';
         this.multicastPort = 50001;
-        this.announceInterval = 30000; // 30 secondi
+        this.announceInterval = 30000;
+        this.autoConnectInterval = 10000; // 10 secondi
         this.socket = null;
         this.isRunning = false;
+        this.user = null;
     }
 
     async initialize(user) {
         this.user = user;
         await this.startMulticastListener();
         this.startAnnouncement();
+        this.startAutoConnect();
     }
 
     // 🎧 Avvia l'ascolto multicast per scoperta peer
@@ -61,6 +66,50 @@ class NetworkDiscovery {
         }, this.announceInterval);
     }
 
+    // 🔄 Connessione automatica ai peer
+    startAutoConnect() {
+        this.autoConnectTimer = setInterval(async () => {
+            await this.autoConnectToPeers();
+        }, this.autoConnectInterval);
+    }
+
+    async autoConnectToPeers() {
+        if (!this.isRunning || !this.user) return;
+
+        try {
+            const peers = await db.getAllPeers();
+            const connectedPeers = await chat.getConnectedPeers();
+            
+            for (const peer of peers) {
+                // Non connetterti a te stesso
+                if (peer.username === this.user.username) continue;
+                
+                // Verifica se già connesso
+                const isConnected = connectedPeers.some(connected => 
+                    connected.address === peer.ip && connected.port === peer.port
+                );
+                
+                if (!isConnected) {
+                    console.log(`🔗 Tentativo di connessione automatica a ${peer.username} (${peer.ip}:${peer.port})`);
+                    await this.connectToPeer(peer.ip, peer.port);
+                }
+            }
+        } catch (error) {
+            console.error('Errore nella connessione automatica:', error);
+        }
+    }
+
+    async connectToPeer(ip, port) {
+        try {
+            await chat.connectToPeer(ip, (message) => {
+                console.log(`📨 Messaggio da ${ip}: ${message}`);
+                // Qui puoi aggiungere la logica per inoltrare i messaggi via WebSocket
+            }, this.user);
+        } catch (error) {
+            console.log(`❌ Connessione automatica a ${ip}:${port} fallita:`, error.message);
+        }
+    }
+
     async announcePresence() {
         if (!this.isRunning) return;
 
@@ -77,8 +126,8 @@ class NetworkDiscovery {
     // 👥 Gestione annunci nuovi peer
     async handlePeerAnnounce(message, rinfo) {
         const peerInfo = {
-            ip: rinfo.address,
-            port: 50000, // Porta TCP predefinita per le connessioni
+            ip: normalizeIP(rinfo.address),
+            port: 50000,
             type: 'discovered',
             public_key: message.public_key,
             username: message.username,
@@ -94,7 +143,10 @@ class NetworkDiscovery {
             peerInfo.username
         );
 
+        console.log(`🔍 Peer scoperto: ${peerInfo.username} (${peerInfo.ip}:${peerInfo.port})`);
         
+        // Connetti automaticamente al nuovo peer
+        await this.connectToPeer(peerInfo.ip, peerInfo.port);
     }
 
     // 🔄 Scambio lista peer connessi
@@ -122,12 +174,13 @@ class NetworkDiscovery {
             // Non aggiungere se stesso
             if (peerData.username === this.user.username) continue;
 
-            // Verifica se il peer è già noto
-            const existingPeer = await db.getPeerByAddress(peerData.ip, peerData.port);
+            const normalizedIP = normalizeIP(peerData.ip);
+            
+            const existingPeer = await db.getPeerByAddress(normalizedIP, peerData.port);
             
             if (!existingPeer) {
                 await db.savePeerWithKey(
-                    peerData.ip,
+                    normalizedIP,
                     peerData.port,
                     'discovered',
                     peerData.public_key,
@@ -135,6 +188,9 @@ class NetworkDiscovery {
                 );
                 
                 console.log(`🔄 Peer aggiunto da scambio: ${peerData.username}`);
+                
+                // Connetti automaticamente al nuovo peer
+                await this.connectToPeer(normalizedIP, peerData.port);
             }
         }
     }
@@ -155,12 +211,14 @@ class NetworkDiscovery {
     async manualScan() {
         console.log("🔍 Avvio scansione manuale della rete...");
         await this.announcePresence();
-        console.log("✅ Scansione completata. Usa 'Lista peer disponibili' per vedere i risultati.");
+        console.log("✅ Scansione completata.");
     }
 
     // 📋 Ottieni lista peer scoperti
     async getDiscoveredPeers() {
-        return await db.getAllPeers();
+        const peers = await db.getAllPeers();
+        const { deduplicatePeers } = require('./utils.js');
+        return deduplicatePeers(peers);
     }
 
     // ⏹️ Ferma il servizio di discovery
@@ -169,6 +227,10 @@ class NetworkDiscovery {
         
         if (this.announceTimer) {
             clearInterval(this.announceTimer);
+        }
+        
+        if (this.autoConnectTimer) {
+            clearInterval(this.autoConnectTimer);
         }
         
         if (this.socket) {

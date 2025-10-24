@@ -1,0 +1,212 @@
+<%
+const currentPage = 'chat';
+const title = 'Chat Globale';
+%>
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - P2P Chat</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fab fa-telegram"></i>
+                    <span>P2P Secure Chat</span>
+                </div>
+                <nav class="nav">
+                    <a href="/" class="nav-link active">
+                        <i class="fas fa-comments"></i> Chat
+                    </a>
+                    <a href="/peers" class="nav-link">
+                        <i class="fas fa-users"></i> Peer
+                    </a>
+                    <a href="/settings" class="nav-link">
+                        <i class="fas fa-cog"></i> Impostazioni
+                    </a>
+                    <span class="user-info">
+                        <i class="fas fa-user"></i> <%= user.username %>
+                    </span>
+                </nav>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="chat-container">
+                <div class="chat-sidebar">
+                    <div class="sidebar-header">
+                        <h3><i class="fas fa-users"></i> Peer Connessi</h3>
+                        <button class="btn btn-sm btn-outline" onclick="scanNetwork()">
+                            <i class="fas fa-sync-alt"></i> Scansione
+                        </button>
+                    </div>
+                    <div class="peers-list" id="peersList">
+                        <% peers.forEach(peer => { %>
+                            <div class="peer-item" data-peer-id="<%= peer.ip %>:<%= peer.port %>">
+                                <div class="peer-info">
+                                    <h4><%= peer.username || 'Sconosciuto' %></h4>
+                                    <p class="peer-address"><%= peer.ip %>:<%= peer.port %></p>
+                                </div>
+                                <div class="peer-status <%= peer.public_key ? 'encrypted' : 'plain' %>">
+                                    <%= peer.public_key ? '🔒' : '🔓' %>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                </div>
+                
+                <div class="chat-main">
+                    <div class="chat-header">
+                        <h3><i class="fas fa-comments"></i> Chat Globale</h3>
+                        <div class="chat-info">
+                            <span class="status-indicator online"></span>
+                            <span>Connesso - Invio a tutti i peer</span>
+                        </div>
+                    </div>
+                    
+                    <div class="messages-container" id="messagesContainer">
+                        <% messages.forEach(message => { %>
+                            <div class="message <%= message.direction === 'outgoing' ? 'outgoing' : 'incoming' %>">
+                                <div class="message-header">
+                                    <span class="sender"><%= message.sender_username || 'Unknown' %></span>
+                                    <span class="time"><%= new Date(message.timestamp).toLocaleTimeString() %></span>
+                                </div>
+                                <div class="message-content">
+                                    <%= message.decrypted_content || message.message %>
+                                </div>
+                            </div>
+                        <% }); %>
+                    </div>
+                    
+                    <div class="message-input-container">
+                        <form id="messageForm" class="message-form">
+                            <div class="input-group">
+                                <input type="text" id="messageInput" 
+                                       placeholder="Scrivi un messaggio a tutti i peer..." 
+                                       maxlength="500"
+                                       required>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <p>P2P Secure Chat - Comunicazione crittata end-to-end</p>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        // Gestione click sui peer per aprire chat individuale
+        document.querySelectorAll('.peer-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const peerId = this.dataset.peerId;
+                window.location.href = `/chat/${encodeURIComponent(peerId)}`;
+            });
+        });
+        
+        // Gestione invio messaggi
+        document.getElementById('messageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            
+            try {
+                const response = await fetch('/api/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    messageInput.value = '';
+                    // Il messaggio verrà aggiunto via WebSocket
+                } else {
+                    console.error('Errore invio messaggio:', data.error);
+                alert('Errore nell\'invio del messaggio: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Errore invio messaggio:', error);
+                alert('Errore di connessione');
+            }
+        });
+        
+        // Ricezione messaggi in tempo reale
+        socket.on('new-message', (data) => {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${data.direction === 'outgoing' ? 'outgoing' : 'incoming'}`;
+            messageElement.innerHTML = `
+                <div class="message-header">
+                    <span class="sender">${data.sender}</span>
+                    <span class="time">${new Date(data.timestamp).toLocaleTimeString()}</span>
+                </div>
+                <div class="message-content">
+                    ${data.message}
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+        
+        // Messaggi di sistema
+        socket.on('system-message', (data) => {
+            console.log('Messaggio di sistema:', data.message);
+        });
+        
+        // Funzioni globali
+        async function scanNetwork() {
+            try {
+                const response = await fetch('/api/scan-network', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Scansione rete avviata! I risultati saranno disponibili tra qualche secondo.');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    alert('Errore: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Errore scansione:', error);
+                alert('Errore di connessione');
+            }
+        }
+        
+        // Auto-scroll iniziale
+        window.addEventListener('load', () => {
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>

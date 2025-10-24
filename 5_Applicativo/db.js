@@ -1,3 +1,4 @@
+// db.js - AGGIORNATO per separazione messaggi
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const path = require('path');
@@ -29,7 +30,7 @@ async function initialize() {
       type TEXT NOT NULL,
       public_key TEXT,
       username TEXT,
-      last_seen INTEGER, -- 👈 AGGIUNGI QUESTA COLONNA
+      last_seen INTEGER, 
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -40,21 +41,12 @@ async function initialize() {
       message TEXT NOT NULL,
       direction TEXT NOT NULL,
       peer_address TEXT,
+      chat_type TEXT NOT NULL DEFAULT 'private', -- 'private' o 'group'
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
-
-  // 🔄 AGGIUNGI QUESTA PARTE PER AGGIORNARE LA TABELLA ESISTENTE
-  try {
-    await db.run('ALTER TABLE peers ADD COLUMN last_seen INTEGER');
-    console.log('✅ Colonna last_seen aggiunta alla tabella peers');
-  } catch (error) {
-    // La colonna esiste già, ignora l'errore
-    if (!error.message.includes('duplicate column name')) {
-      console.log('ℹ️  Colonna last_seen già presente');
-    }
-  }
 }
+
 // 🧩 Funzioni di gestione utenti
 async function createUser(username, publicKey, privateKey) {
   const result = await db.run(
@@ -97,6 +89,7 @@ async function savePeerWithKey(ip, port, type, publicKey, username) {
     );
   }
 }
+
 async function getPeerPublicKey(ip, port) {
   const peer = await getPeerByAddress(ip, port);
   return peer ? peer.public_key : null;
@@ -105,18 +98,37 @@ async function getPeerPublicKey(ip, port) {
 async function getAllPeers() {
   return await db.all('SELECT * FROM peers ORDER BY last_seen DESC');
 }
-// Aggiungi questa funzione al db.js
-async function getAllPeers() {
-  return await db.all('SELECT * FROM peers ORDER BY last_seen DESC');
-}
-// 🧩 Funzioni di gestione messaggi
-async function saveMessage(senderUsername, receiverUsername, message, direction, peerAddress) {
+
+// 🧩 Funzioni di gestione messaggi - SEPARATI per tipo
+async function saveMessage(senderUsername, receiverUsername, message, direction, peerAddress, chatType = 'private') {
   await db.run(
-    'INSERT INTO messages (sender_username, receiver_username, message, direction, peer_address) VALUES (?, ?, ?, ?, ?)',
-    [senderUsername, receiverUsername, message, direction, peerAddress]
+    'INSERT INTO messages (sender_username, receiver_username, message, direction, peer_address, chat_type) VALUES (?, ?, ?, ?, ?, ?)',
+    [senderUsername, receiverUsername, message, direction, peerAddress, chatType]
   );
 }
 
+// 📨 Ottieni messaggi di gruppo (solo broadcast)
+async function getGroupMessages() {
+  return await db.all(`
+    SELECT * FROM messages 
+    WHERE chat_type = 'group'
+    ORDER BY timestamp DESC
+    LIMIT 100
+  `);
+}
+
+// 💬 Ottieni messaggi privati con un peer specifico
+async function getPrivateMessages(userUsername, peerAddress) {
+  return await db.all(`
+    SELECT * FROM messages 
+    WHERE chat_type = 'private' 
+    AND ( (sender_username = ? AND peer_address = ?) OR (receiver_username = ? AND peer_address = ?) )
+    ORDER BY timestamp DESC
+    LIMIT 100
+  `, [userUsername, peerAddress, userUsername, peerAddress]);
+}
+
+// 📊 Ottieni tutti i messaggi per un utente (per compatibilità)
 async function getMessagesByUser(username) {
   return await db.all(`
     SELECT * FROM messages 
@@ -124,6 +136,20 @@ async function getMessagesByUser(username) {
     ORDER BY timestamp DESC
     LIMIT 100
   `, [username, username]);
+}
+
+// 🔔 Ottieni conteggio messaggi non letti per peer
+async function getUnreadCounts(userUsername) {
+  // Per semplicità, consideriamo tutti i messaggi come "letti" quando visualizzati
+  // Puoi implementare una logica più avanzata con una colonna 'read'
+  return await db.all(`
+    SELECT peer_address, COUNT(*) as unread_count
+    FROM messages 
+    WHERE chat_type = 'private' 
+    AND receiver_username = ? 
+    AND direction = 'incoming'
+    GROUP BY peer_address
+  `, [userUsername]);
 }
 
 // 🧩 Chiusura del database
@@ -145,5 +171,8 @@ module.exports = {
   getAllPeers,
   saveMessage,
   getMessagesByUser,
+  getGroupMessages,
+  getPrivateMessages,
+  getUnreadCounts,
   close
 };

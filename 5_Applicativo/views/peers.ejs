@@ -1,0 +1,70 @@
+<%
+const currentPage = 'peers';
+const title = 'Peer Network';
+const body = `
+<div class="peers-container">
+    <div class="peers-header">
+        <h2><i class="fas fa-network-wired"></i> Rete Peer</h2>
+        <div class="peers-actions">
+            <button class="btn btn-primary" onclick="scanNetwork()">
+                <i class="fas fa-search"></i> Scansione Rete
+            </button>
+            <button class="btn btn-outline" onclick="loadPeers()">
+                <i class="fas fa-sync-alt"></i> Aggiorna
+            </button>
+        </div>
+    </div>
+    
+    <div class="connect-peer-form">
+        <h3><i class="fas fa-link"></i> Connetti a Peer</h3>
+        <form id="connectForm" class="form-inline">
+            <input type="text" id="peerIp" 
+                   placeholder="Indirizzo IP del peer (es: 192.168.1.100)"
+                   required>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plug"></i> Connetti
+            </button>
+        </form>
+    </div>
+    
+    <div class="peers-grid" id="peersGrid">
+        ${peers.map((peer, index) => `
+            <div class="peer-card">
+                <div class="peer-header">
+                    <div class="peer-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="peer-info">
+                        <h4>${peer.username || 'Sconosciuto'}</h4>
+                        <p class="peer-address">${peer.ip}:${peer.port}</p>
+                    </div>
+                    <div class="peer-status ${peer.public_key ? 'encrypted' : 'plain'}">
+                        ${peer.public_key ? '🔒' : '🔓'}
+                    </div>
+                </div>
+                
+                <div class="peer-details">
+                    <div class="detail">
+                        <span class="label">Tipo:</span>
+                        <span class="value">${peer.type}</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">Ultimo visto:</span>
+                        <span class="value">${peer.last_seen ? new Date(peer.last_seen).toLocaleString() : 'Mai'}</span>
+                    </div>
+                </div>
+                
+                <div class="peer-actions">
+                    <button class="btn btn-sm btn-primary" 
+                            onclick="connectToPeer('${peer.ip}')">
+                        <i class="fas fa-plug"></i> Connetti
+                    </button>
+                </div>
+            </div>
+        `).join('')}
+    </div>
+</div>
+`;
+%>
+
+<%- include('layout', {title, body, currentPage}) %>

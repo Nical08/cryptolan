@@ -1,0 +1,24 @@
+<header class="header">
+    <div class="header-content">
+        <div class="logo">
+            <i class="fab fa-telegram"></i>
+            <span>P2P Secure Chat</span>
+        </div>
+        <nav class="nav">
+            <% if (typeof user !== 'undefined' && user) { %>
+                <a href="/" class="nav-link <%= currentPage === 'chat' ? 'active' : '' %>">
+                    <i class="fas fa-comments"></i> Chat
+                </a>
+                <a href="/peers" class="nav-link <%= currentPage === 'peers' ? 'active' : '' %>">
+                    <i class="fas fa-users"></i> Peer
+                </a>
+                <a href="/settings" class="nav-link <%= currentPage === 'settings' ? 'active' : '' %>">
+                    <i class="fas fa-cog"></i> Impostazioni
+                </a>
+                <span class="user-info">
+                    <i class="fas fa-user"></i> <%= user.username %>
+                </span>
+            <% } %>
+        </nav>
+    </div>
+</header>
