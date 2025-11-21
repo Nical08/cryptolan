@@ -864,7 +864,7 @@ body {
     gap: 0.5rem;
 }
 
-/* Indicatori di stato */
+/* Indicatori di estado */
 .status-indicator {
     width: 8px;
     height: 8px;
@@ -923,37 +923,429 @@ body {
     margin-left: 0.5rem;
 }
 
-/* Miglioramenti responsive */
-@media (max-width: 768px) {
-    .toast {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
+/* ============================================ */
+/* LAYOUT TELEGRAM-STYLE (NUOVO) */
+/* ============================================ */
+
+/* Layout Telegram-style */
+.telegram-layout {
+    display: flex;
+    height: 80vh;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: white;
+    overflow: hidden;
 }
 
-/* Scrollbar personalizzata */
-.messages-container::-webkit-scrollbar {
-    width: 6px;
+.contacts-sidebar {
+    width: 350px;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    background: var(--sidebar-bg);
 }
 
-.messages-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
+.chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
-.messages-container::-webkit-scrollbar-thumb {
+.sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.search-container {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: white;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+}
+
+.contacts-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.contact-item {
+    display: flex;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.contact-item:hover {
+    background-color: var(--secondary-color);
+}
+
+.contact-item.active {
+    background-color: var(--message-outgoing);
+    border-left: 3px solid var(--primary-color);
+}
+
+.contact-avatar {
+    width: 50px;
+    height: 50px;
     background: var(--primary-color);
-    border-radius: 3px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-right: 1rem;
+    flex-shrink: 0;
 }
 
-.messages-container::-webkit-scrollbar-thumb:hover {
+.contact-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.contact-info h4 {
+    margin: 0 0 0.25rem 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1rem;
+}
+
+.contact-last-message {
+    margin: 0;
+    color: #666;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.contact-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+
+.contact-time {
+    font-size: 0.7rem;
+    color: #999;
+}
+
+.contact-status {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.contact-status.encrypted {
+    color: var(--success-color);
+}
+
+.contact-status.plain {
+    color: var(--warning-color);
+}
+
+.no-chat-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--border-color);
+}
+
+.empty-state h3 {
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.empty-state p {
+    color: #666;
+}
+
+.empty-contacts {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #666;
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-contacts i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--border-color);
+}
+
+/* Modale */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--secondary-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+/* Stili per l'area chat attiva */
+.active-chat {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+}
+
+.no-chat-selected {
+    display: flex;
+}
+
+/* Miglioramenti per chat header nella nuova layout */
+.chat-header-single {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.peer-info-large {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.peer-avatar-large {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--primary-color), #6f42c1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.peer-details-large {
+    flex: 1;
+}
+
+.peer-details-large h3 {
+    margin: 0 0 0.25rem 0;
+    color: var(--text-color);
+    font-size: 1.1rem;
+}
+
+.peer-status-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.peer-status-info .status-indicator {
+    margin: 0;
+}
+
+.connection-status {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.connection-status.connected {
+    background: var(--success-color);
+    color: white;
+}
+
+.connection-status.disconnected {
+    background: var(--danger-color);
+    color: white;
+}
+
+/* Miglioramenti per l'input nella nuova layout */
+.message-input-container-single {
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    background: white;
+}
+
+.message-input-container-single .input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.message-input-container-single .input-group input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 25px;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.message-input-container-single .input-group input:focus {
+    border-color: var(--primary-color);
+}
+
+.message-input-container-single .input-group input:disabled {
+    background-color: var(--secondary-color);
+    cursor: not-allowed;
+}
+
+/* Toast notifications migliorate */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-left: 4px solid var(--primary-color);
+    z-index: 1000;
+    max-width: 300px;
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+}
+
+.toast.show {
+    transform: translateX(0);
+}
+
+.toast.hidden {
+    transform: translateX(400px);
+}
+
+.toast.info {
+    border-left-color: var(--primary-color);
+}
+
+.toast.success {
+    border-left-color: var(--success-color);
+}
+
+.toast.error {
+    border-left-color: var(--danger-color);
+}
+
+.toast.message {
+    border-left-color: #6f42c1;
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Scrollbar personalizzata per contacts list */
+.contacts-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.contacts-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 2px;
+}
+
+.contacts-list::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.contacts-list::-webkit-scrollbar-thumb:hover {
     background: #006699;
 }
 
 /* Effetti hover per elementi interattivi */
-.peer-item:hover {
+.contact-item:hover {
     background-color: var(--secondary-color);
     transform: translateX(2px);
     transition: all 0.2s ease;
@@ -964,6 +1356,8 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     transition: all 0.2s ease;
 }
+
+/* Messaggi privati */
 .private-message {
     border-left: 4px solid #6f42c1;
 }
@@ -1006,15 +1400,6 @@ body {
     color: var(--primary-color);
 }
 
-/* Miglioramenti visivi */
-.peer-avatar-large {
-    background: linear-gradient(135deg, var(--primary-color), #6f42c1);
-}
-
-.chat-header-single {
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-}
-
 /* Badge per tipo messaggio */
 .message-type-badge {
     display: inline-block;
@@ -1034,35 +1419,134 @@ body {
     color: white;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .chat-header-single {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .peer-actions-single {
-        justify-content: center;
-    }
-}
-.peer-message-count {
-    background: var(--primary-color);
-    color: white;
-    border-radius: 10px;
-    padding: 0.1rem 0.5rem;
-    font-size: 0.7rem;
-}
-
 /* Badge per nuovi messaggi */
 .new-messages-badge {
     background: var(--danger-color);
     color: white;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.7rem;
     margin-left: auto;
+}
+
+/* Responsive per layout Telegram */
+@media (max-width: 768px) {
+    .telegram-layout {
+        flex-direction: column;
+        height: 85vh;
+    }
+    
+    .contacts-sidebar {
+        width: 100%;
+        height: 40%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .chat-area {
+        height: 60%;
+    }
+    
+    .contacts-sidebar.mobile-visible {
+        display: flex;
+    }
+    
+    .chat-area.mobile-hidden {
+        display: none;
+    }
+    
+    .mobile-back-button {
+        display: flex;
+    }
+    
+    .chat-header-single {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    
+    .peer-info-large {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+    
+    .peer-actions-single {
+        justify-content: center;
+    }
+    
+    .messages-container-single {
+        max-height: calc(60vh - 140px);
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .toast {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+}
+
+/* Animazioni di transizione */
+.contact-item {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.message {
+    transition: all 0.3s ease;
+}
+
+/* Stati di caricamento */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Miglioramenti per messaggi nella nuova chat */
+.messages-container-single .message {
+    max-width: 80%;
+    margin-bottom: 0.75rem;
+}
+
+.messages-container-single .message.incoming {
+    margin-right: auto;
+    margin-left: 0;
+}
+
+.messages-container-single .message.outgoing {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+/* Miglioramenti per lo stato di connessione nella lista */
+.contact-meta .connection-status {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
 }

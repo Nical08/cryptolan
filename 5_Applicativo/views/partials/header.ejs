@@ -6,18 +6,18 @@
         </div>
         <nav class="nav">
             <% if (typeof user !== 'undefined' && user) { %>
-                <a href="/" class="nav-link <%= currentPage === 'chat' ? 'active' : '' %>">
-                    <i class="fas fa-comments"></i> Chat
-                </a>
-                <a href="/peers" class="nav-link <%= currentPage === 'peers' ? 'active' : '' %>">
-                    <i class="fas fa-users"></i> Peer
-                </a>
-                <a href="/settings" class="nav-link <%= currentPage === 'settings' ? 'active' : '' %>">
-                    <i class="fas fa-cog"></i> Impostazioni
-                </a>
+                
                 <span class="user-info">
                     <i class="fas fa-user"></i> <%= user.username %>
+                    <span class="status-indicator online"></span>
                 </span>
+                <a href="/" class="nav-link <%= currentPage === 'home' ? 'active' : '' %>">
+                    <i class="fas fa-comments"></i> Chat
+                </a>
+            <% } else { %>
+                <a href="/login" class="nav-link">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
             <% } %>
         </nav>
     </div>

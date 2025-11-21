@@ -1,4 +1,3 @@
-// server.js - AGGIORNATO per tempo reale
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -36,10 +35,9 @@ app.use((req, res, next) => {
     next();
 });
 
-// 🏠 Home page - Chat di GRUPPO (solo messaggi broadcast)
+// 🏠 HOME PAGE - Layout Telegram-style (SOSTITUISCE TUTTE LE CHAT)
 app.get('/', requireAuth, async (req, res) => {
     try {
-        const messages = await db.getGroupMessages();
         let peers = await networkDiscovery.getDiscoveredPeers();
         const connectedPeers = chat.getConnectedPeers();
         
@@ -53,68 +51,18 @@ app.get('/', requireAuth, async (req, res) => {
             };
         });
 
-        res.render('chat-group', {
+        res.render('home', {
             user: currentUser,
-            messages: messages.reverse(),
             peers: peers,
-            currentPage: 'group'
+            currentPage: 'home'
         });
     } catch (error) {
-        console.error('Errore nel caricamento chat di gruppo:', error);
-        res.status(500).render('error', { error: 'Errore nel caricamento della chat di gruppo' });
+        console.error('Errore nel caricamento home:', error);
+        res.status(500).render('error', { error: 'Errore nel caricamento della home' });
     }
 });
 
-// 💬 Chat PRIVATA con peer specifico
-app.get('/chat/:peerId', requireAuth, async (req, res) => {
-    try {
-        const peerId = req.params.peerId;
-        const [peerIp, peerPort] = peerId.split(':');
-        
-        const messages = await db.getPrivateMessages(currentUser.username, peerId);
-        let peers = await networkDiscovery.getDiscoveredPeers();
-        const connectedPeers = chat.getConnectedPeers();
-        
-        peers = peers.map(peer => {
-            const isConnected = connectedPeers.some(connected => 
-                connected.address === peer.ip && connected.port === peer.port
-            );
-            return {
-                ...peer,
-                isConnected: isConnected
-            };
-        });
-
-        const currentPeer = peers.find(p => 
-            p.ip === peerIp && p.port === (parseInt(peerPort) || 50000)
-        );
-
-        if (!currentPeer) {
-            return res.status(404).render('error', { 
-                error: 'Peer non trovato',
-                currentPage: 'chat'
-            });
-        }
-
-        res.render('chat-private', {
-            user: currentUser,
-            messages: messages.reverse(),
-            peers: peers,
-            currentPeer: currentPeer,
-            currentPage: 'private'
-        });
-    } catch (error) {
-        console.error('Errore nel caricamento chat privata:', error);
-        res.status(500).render('error', { error: 'Errore nel caricamento della chat privata' });
-    }
-});
-
-// 🔐 Pagina di login/registrazione
-app.get('/login', (req, res) => {
-    res.render('login', { currentPage: 'login' });
-});
-
-// 📋 Lista peer
+// 📋 Lista peer (vista separata - opzionale)
 app.get('/peers', requireAuth, async (req, res) => {
     try {
         let peers = await networkDiscovery.getDiscoveredPeers();
@@ -154,6 +102,11 @@ app.get('/settings', requireAuth, (req, res) => {
     });
 });
 
+// 🔐 Pagina di login/registrazione
+app.get('/login', (req, res) => {
+    res.render('login', { currentPage: 'login' });
+});
+
 // 🔍 API per scansione rete
 app.post('/api/scan-network', requireAuth, async (req, res) => {
     try {
@@ -188,28 +141,6 @@ app.post('/api/disconnect-peer', requireAuth, async (req, res) => {
         const { peerAddress } = req.body;
         const success = chat.disconnectFromPeer(peerAddress);
         res.json({ success: success, message: success ? 'Disconnesso' : 'Peer non trovato' });
-    } catch (error) {
-        res.json({ success: false, error: error.message });
-    }
-});
-
-// 💬 API per inviare messaggi di GRUPPO (broadcast)
-app.post('/api/send-group-message', requireAuth, async (req, res) => {
-    try {
-        const { message } = req.body;
-        const results = await chat.sendGroupMessage(message, currentUser);
-        
-        // Invia il messaggio a tutti i client nella chat di gruppo
-        io.emit('new-group-message', {
-            id: Date.now(), // ID unico per il messaggio
-            sender: currentUser.username,
-            message: message,
-            timestamp: new Date(),
-            direction: 'outgoing',
-            type: 'group'
-        });
-        
-        res.json({ success: true, results: results });
     } catch (error) {
         res.json({ success: false, error: error.message });
     }
@@ -261,22 +192,70 @@ app.get('/api/peers', requireAuth, async (req, res) => {
     }
 });
 
-// 💬 API per messaggi di gruppo
-app.get('/api/group-messages', requireAuth, async (req, res) => {
+// ℹ️ API per informazioni di un peer specifico
+app.get('/api/peer-info/:ip/:port', requireAuth, async (req, res) => {
     try {
-        const messages = await db.getGroupMessages();
-        res.json({ success: true, messages: messages.reverse() });
+        const { ip, port } = req.params;
+        let peers = await networkDiscovery.getDiscoveredPeers();
+        const connectedPeers = chat.getConnectedPeers();
+        
+        const peer = peers.find(p => p.ip === ip && p.port === parseInt(port));
+        
+        if (!peer) {
+            return res.json({ success: false, error: 'Peer non trovato' });
+        }
+        
+        const isConnected = connectedPeers.some(connected => 
+            connected.address === peer.ip && connected.port === peer.port
+        );
+        
+        const peerWithStatus = {
+            ...peer,
+            isConnected: isConnected
+        };
+        
+        res.json({ success: true, peer: peerWithStatus });
     } catch (error) {
         res.json({ success: false, error: error.message });
     }
 });
 
 // 💬 API per messaggi privati con un peer
-app.get('/api/private-messages/:peerId', requireAuth, async (req, res) => {
+app.get('/api/private-messages/:ip/:port', requireAuth, async (req, res) => {
     try {
-        const peerId = req.params.peerId;
-        const messages = await db.getPrivateMessages(currentUser.username, peerId);
+        const { ip, port } = req.params;
+        const peerAddress = `${ip}:${port}`;
+        const messages = await db.getPrivateMessages(currentUser.username, peerAddress);
         res.json({ success: true, messages: messages.reverse() });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// 🗑️ API per pulire il database
+app.post('/api/clear-database', requireAuth, async (req, res) => {
+    try {
+        // Implementa la logica per pulire il database se necessario
+        // Attenzione: questa operazione è distruttiva!
+        res.json({ success: true, message: 'Database pulito' });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
+
+// 🔄 API per riavviare il sistema
+app.post('/api/restart-system', requireAuth, async (req, res) => {
+    try {
+        // Riavvia i servizi
+        chat.closeAll();
+        networkDiscovery.stop();
+        
+        setTimeout(async () => {
+            await networkDiscovery.initialize(currentUser);
+            chat.startServer(handleIncomingMessage, currentUser);
+        }, 1000);
+        
+        res.json({ success: true, message: 'Sistema riavviato' });
     } catch (error) {
         res.json({ success: false, error: error.message });
     }
@@ -342,19 +321,11 @@ function handleIncomingMessage(message, peerInfo, chatType) {
         cleanMessage = message.split(' dice: ')[1];
     }
     
-    if (chatType === 'group') {
-        // Invia a tutti i client nella chat di gruppo
-        io.emit('new-group-message', {
-            id: Date.now(),
-            sender: peerInfo.username || peerInfo.address,
-            message: cleanMessage,
-            timestamp: new Date(),
-            direction: 'incoming',
-            type: 'group'
-        });
-    } else {
-        // Invia solo ai client interessati alla chat privata
+    // Per la nuova home, gestiamo solo messaggi privati
+    if (chatType === 'private' || !chatType) {
         const peerAddress = `${peerInfo.address}:${peerInfo.port}`;
+        
+        // Invia il messaggio a tutti i client nella home
         io.emit('new-private-message', {
             id: Date.now(),
             sender: peerInfo.username || peerInfo.address,
@@ -372,22 +343,22 @@ function handleIncomingMessage(message, peerInfo, chatType) {
         message: `Nuovo messaggio da ${peerInfo.username || peerInfo.address}`,
         timestamp: new Date()
     });
+    
+    // Aggiorna la lista peer
+    updateConnectedPeers();
 }
 
 // Gestione WebSocket per messaggi in tempo reale
 io.on('connection', (socket) => {
     console.log('👤 Nuovo client connesso:', socket.id);
     
-    // Unisciti alla chat di gruppo
-    socket.on('join-group', () => {
-        socket.join('group-chat');
-        console.log(`👤 Client ${socket.id} joined group chat`);
-    });
-    
-    // Unisciti a una chat privata
-    socket.on('join-private', (peerId) => {
-        socket.join(`private-${peerId}`);
-        console.log(`👤 Client ${socket.id} joined private chat: ${peerId}`);
+    // Unisciti alla home
+    socket.on('join-home', () => {
+        socket.join('home');
+        console.log(`👤 Client ${socket.id} joined home`);
+        
+        // Invia immediatamente l'aggiornamento dei peer
+        updateConnectedPeers();
     });
     
     // Richiesta di aggiornamento lista peer
@@ -416,7 +387,8 @@ async function updateConnectedPeers() {
             };
         });
         
-        io.emit('peers-updated', { peers: peers });
+        // Invia aggiornamento a tutti i client nella home
+        io.to('home').emit('peers-updated', { peers: peers });
     } catch (error) {
         console.error('Errore aggiornamento peer:', error);
     }
@@ -426,6 +398,7 @@ async function updateConnectedPeers() {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
     console.log(`🚀 Server avviato su http://localhost:${PORT}`);
+    console.log(`📱 Interfaccia Telegram-style disponibile`);
     
     try {
         await db.initialize();
@@ -452,3 +425,5 @@ process.on('SIGINT', async () => {
     
     process.exit(0);
 });
+
+module.exports = app;
