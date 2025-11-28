@@ -9,7 +9,7 @@ class NetworkDiscovery {
         this.multicastGroup = '224.0.0.114';
         this.multicastPort = 50001;
         this.announceInterval = 30000;
-        this.autoConnectInterval = 10000; // 10 secondi
+        this.autoConnectInterval = 40000; // 10 secondi
         this.socket = null;
         this.isRunning = false;
         this.user = null;

@@ -343,11 +343,9 @@ function handleIncomingMessage(message, peerInfo, chatType) {
         message: `Nuovo messaggio da ${peerInfo.username || peerInfo.address}`,
         timestamp: new Date()
     });
-    
     // Aggiorna la lista peer
     updateConnectedPeers();
 }
-
 // Gestione WebSocket per messaggi in tempo reale
 io.on('connection', (socket) => {
     console.log('👤 Nuovo client connesso:', socket.id);
@@ -370,7 +368,6 @@ io.on('connection', (socket) => {
         console.log('👤 Client disconnesso:', socket.id);
     });
 });
-
 // 🔄 Funzione per aggiornare la lista peer connessi
 async function updateConnectedPeers() {
     try {
@@ -393,7 +390,6 @@ async function updateConnectedPeers() {
         console.error('Errore aggiornamento peer:', error);
     }
 }
-
 // Avvio server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, async () => {
@@ -407,7 +403,6 @@ server.listen(PORT, async () => {
         console.error('❌ Errore inizializzazione database:', error);
     }
 });
-
 // Gestione chiusura pulita
 process.on('SIGINT', async () => {
     console.log('👋 Chiusura applicazione...');
