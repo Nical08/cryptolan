@@ -103,7 +103,6 @@ class NetworkDiscovery {
         try {
             await chat.connectToPeer(ip, (message) => {
                 console.log(`📨 Messaggio da ${ip}: ${message}`);
-                // Qui puoi aggiungere la logica per inoltrare i messaggi via WebSocket
             }, this.user);
         } catch (error) {
             console.log(`❌ Connessione automatica a ${ip}:${port} fallita:`, error.message);

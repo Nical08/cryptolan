@@ -15,31 +15,50 @@ function getPeerKey(peer) {
 }
 
 function deduplicatePeers(peers) {
+    // Crea una mappa per evitare duplicati: chiave = identificatore unico del peer
     const peerMap = new Map();
     
     peers.forEach(peer => {
+        // Otteniamo una chiave unica per distinguere i peer (es. IP, pubkey, ecc.)
         const key = getPeerKey(peer);
+
+        // Controlliamo se esiste già un peer con la stessa chiave
         const existingPeer = peerMap.get(key);
         
         if (!existingPeer) {
+            // Nessun duplicato → aggiungi direttamente
             peerMap.set(key, peer);
         } else {
+            // Esiste già → uniamo le informazioni
+
             const mergedPeer = {
-                ...existingPeer, //copia tutte le proprieta 
-                ...peer, //le sovrascrive 
-                type: peer.last_seen > existingPeer.last_seen ? peer.type : existingPeer.type, //prende il valore piu recente
-                last_seen: Math.max(peer.last_seen || 0, existingPeer.last_seen || 0), //valore massimo
-                username: peer.username || existingPeer.username, 
+                ...existingPeer,  // Copia tutte le proprietà del peer esistente…
+                ...peer,          // …e poi sovrascrive con quelle del peer più recente
+         
+                // Se il peer attuale è stato visto più recentemente, prendiamo il suo tipo
+                type: peer.last_seen > existingPeer.last_seen 
+                        ? peer.type 
+                        : existingPeer.type,
+
+                // Manteniamo il valore last_seen più alto (cioè il più recente)
+                last_seen: Math.max(peer.last_seen || 0, existingPeer.last_seen || 0),
+
+                // Manteniamo username e public_key, scegliendo quello presente/non vuoto
+                username: peer.username || existingPeer.username,
                 public_key: peer.public_key || existingPeer.public_key
             };
+
+            // Aggiorniamo la mappa con il peer unificato
             peerMap.set(key, mergedPeer);
         }
     });
     
+    // Ritorniamo la lista dei peer unificati, ordinati per ultimo avvistamento (decrescente)
     return Array.from(peerMap.values()).sort((a, b) => 
-        (b.last_seen || 0) - (a.last_seen || 0) //ordina i peer dall ultimo visto al meno recente
+        (b.last_seen || 0) - (a.last_seen || 0)
     );
 }
+
 
 function formatRelativeTime(timestamp) {
     if (!timestamp) return 'Mai';

@@ -47,7 +47,7 @@ async function initialize() {
   `);
 }
 
-// 🧩 Funzioni di gestione utenti
+//  Funzioni di gestione utenti
 async function createUser(username, publicKey, privateKey) {
   const result = await db.run(
     'INSERT INTO users (username, public_key, private_key) VALUES (?, ?, ?)',
@@ -99,7 +99,7 @@ async function getAllPeers() {
   return await db.all('SELECT * FROM peers ORDER BY last_seen DESC');
 }
 
-// 🧩 Funzioni di gestione messaggi - SEPARATI per tipo
+//  Funzioni di gestione messaggi - SEPARATI per tipo
 async function saveMessage(senderUsername, receiverUsername, message, direction, peerAddress, chatType = 'private') {
   await db.run(
     'INSERT INTO messages (sender_username, receiver_username, message, direction, peer_address, chat_type) VALUES (?, ?, ?, ?, ?, ?)',
@@ -107,7 +107,7 @@ async function saveMessage(senderUsername, receiverUsername, message, direction,
   );
 }
 
-// 📨 Ottieni messaggi di gruppo (solo broadcast)
+//  Ottieni messaggi di gruppo (solo broadcast)
 async function getGroupMessages() {
   return await db.all(`
     SELECT * FROM messages 
@@ -117,7 +117,7 @@ async function getGroupMessages() {
   `);
 }
 
-// 💬 Ottieni messaggi privati con un peer specifico
+//  Ottieni messaggi privati con un peer specifico
 async function getPrivateMessages(userUsername, peerAddress) {
   return await db.all(`
     SELECT * FROM messages 
@@ -128,7 +128,7 @@ async function getPrivateMessages(userUsername, peerAddress) {
   `, [userUsername, peerAddress, userUsername, peerAddress]);
 }
 
-// 📊 Ottieni tutti i messaggi per un utente (per compatibilità)
+//  Ottieni tutti i messaggi per un utente (per compatibilità)
 async function getMessagesByUser(username) {
   return await db.all(`
     SELECT * FROM messages 
@@ -138,7 +138,7 @@ async function getMessagesByUser(username) {
   `, [username, username]);
 }
 
-// 🔔 Ottieni conteggio messaggi non letti per peer
+//  Ottieni conteggio messaggi non letti per peer
 async function getUnreadCounts(userUsername) {
   // Per semplicità, consideriamo tutti i messaggi come "letti" quando visualizzati
   // Puoi implementare una logica più avanzata con una colonna 'read'
@@ -152,7 +152,7 @@ async function getUnreadCounts(userUsername) {
   `, [userUsername]);
 }
 
-// 🧩 Chiusura del database
+// Chiusura del database
 async function close() {
   if (db) {
     await db.close();
