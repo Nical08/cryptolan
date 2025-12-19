@@ -1,0 +1,24 @@
+<header class="header">
+    <div class="header-content">
+        <div class="logo">
+            <i class="fab fa-telegram"></i>
+            <span>P2P Secure Chat</span>
+        </div>
+        <nav class="nav">
+            <% if (typeof user !== 'undefined' && user) { %>
+                
+                <span class="user-info">
+                    <i class="fas fa-user"></i> <%= user.username %>
+                    <span class="status-indicator online"></span>
+                </span>
+                <a href="/" class="nav-link <%= currentPage === 'home' ? 'active' : '' %>">
+                    <i class="fas fa-comments"></i> Chat
+                </a>
+            <% } else { %>
+                <a href="/login" class="nav-link">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+            <% } %>
+        </nav>
+    </div>
+</header>

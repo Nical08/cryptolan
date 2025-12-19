@@ -1,0 +1,70 @@
+<%
+const currentPage = 'settings';
+const title = 'Impostazioni';
+const body = `
+<div class="settings-container">
+    <div class="settings-header">
+        <h2><i class="fas fa-cog"></i> Impostazioni Sistema</h2>
+    </div>
+    
+    <div class="settings-grid">
+        <div class="settings-card">
+            <h3><i class="fas fa-user"></i> Informazioni Utente</h3>
+            <div class="user-info">
+                <div class="info-item">
+                    <label>Username:</label>
+                    <span>${user.username}</span>
+                </div>
+                <div class="info-item">
+                    <label>Chiave Pubblica:</label>
+                    <span class="public-key">${user.public_key.substring(0, 50)}...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-card">
+            <h3><i class="fas fa-network-wired"></i> Configurazione Rete</h3>
+            <div class="network-info">
+                <div class="info-item">
+                    <label>Porta Chat:</label>
+                    <span>50000 (TCP)</span>
+                </div>
+                <div class="info-item">
+                    <label>Porta Discovery:</label>
+                    <span>50001 (UDP Multicast)</span>
+                </div>
+                <div class="info-item">
+                    <label>Gruppo Multicast:</label>
+                    <span>224.0.0.114</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-card">
+            <h3><i class="fas fa-shield-alt"></i> Sicurezza</h3>
+            <div class="security-info">
+                <div class="info-item">
+                    <label>Stato Crittografia:</label>
+                    <span class="status-encrypted">🔒 Attiva</span>
+                </div>
+                <div class="info-item">
+                    <label>Tipo Chiavi:</label>
+                    <span>RSA 2048-bit</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="system-actions">
+        <button class="btn btn-warning" onclick="restartSystem()">
+            <i class="fas fa-redo"></i> Riavvia Sistema
+        </button>
+        <button class="btn btn-danger" onclick="clearData()">
+            <i class="fas fa-trash"></i> Pulisci Database
+        </button>
+    </div>
+</div>
+`;
+%>
+
+<%- include('layout', {title, body, currentPage}) %>
